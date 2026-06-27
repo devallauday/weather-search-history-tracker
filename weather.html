@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weather App with Search History</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+
+        .container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .container::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        #city-input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        #city-input:focus {
+            border-color: #667eea;
+        }
+
+        #search-btn {
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        #search-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        #search-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* History Section */
+        .history-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .history-header h3 {
+            color: #555;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .history-actions button {
+            background: none;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        #clear-history-btn {
+            color: #dc3545;
+        }
+
+        #clear-history-btn:hover {
+            background: #fee;
+        }
+
+        #refresh-history-btn {
+            color: #667eea;
+        }
+
+        #refresh-history-btn:hover {
+            background: #eef3ff;
+        }
+
+        .history-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 35px;
+        }
+
+        .history-item {
+            background: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+        }
+
+        .history-item:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            border-color: #667eea;
+        }
+
+        .history-item .city-name {
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .history-item .remove-btn {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 2px;
+            transition: all 0.2s ease;
+            line-height: 1;
+        }
+
+        .history-item .remove-btn:hover {
+            color: #dc3545;
+            transform: scale(1.2);
+        }
+
+        .history-item .timestamp {
+            font-size: 10px;
+            color: #999;
+            margin-left: 4px;
+        }
+
+        .history-item:hover .timestamp {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .no-history {
+            color: #999;
+            font-size: 14px;
+            font-style: italic;
+            padding: 8px 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        .history-count {
+            font-size: 12px;
+            color: #999;
+            margin-left: 4px;
+        }
+
+        /* Weather Info */
+        .weather-info {
+            text-align: center;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .weather-info.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .weather-icon {
+            font-size: 80px;
+            margin-bottom: 10px;
+        }
+
+        #city-name {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .temperature {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .description {
+            font-size: 20px;
+            color: #666;
+            text-transform: capitalize;
+            margin-bottom: 20px;
+        }
+
+        .details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .detail-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .detail-item span:first-child {
+            font-size: 14px;
+            color: #888;
+        }
+
+        .detail-item span:last-child {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .error-message {
+            color: #dc3545;
+            text-align: center;
+            margin-top: 15px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-size: 18px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 500px) {
+            .container {
+                padding: 20px;
+                max-height: 98vh;
+            }
+            
+            .search-box {
+                flex-direction: column;
+            }
+            
+            #search-btn {
+                width: 100%;
+            }
+            
+            .details {
+                grid-template-columns: 1fr;
+            }
+            
+            .temperature {
+                font-size: 36px;
+            }
+
+            .history-item {
+                font-size: 12px;
+                padding: 4px 10px;
+            }
+
+            .history-item .city-name {
+                max-width: 80px;
+            }
+
+            .history-header {
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌤️ Weather App</h1>
+        
+        <div class="search-box">
+            <input 
+                type="text" 
+                id="city-input" 
+                placeholder="Enter city name..."
+                autocomplete="off"
+            />
+            <button id="search-btn">Search</button>
+        </div>
+
+        <!-- Search History Section -->
+        <div class="history-section">
+            <div class="history-header">
+                <h3>
+                    📋 Search History
+                    <span class="history-count" id="history-count"></span>
+                </h3>
+                <div class="history-actions">
+                    <button id="refresh-history-btn">🔄</button>
+                    <button id="clear-history-btn">✕ Clear All</button>
+                </div>
+            </div>
+            <div class="history-list" id="history-list">
+                <div class="no-history">No searches yet</div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">Loading weather data</div>
+
+        <div id="weather-info" class="weather-info">
+            <div class="weather-icon" id="weather-icon">🌤️</div>
+            <h2 id="city-name">--</h2>
+            <p class="temperature" id="temperature">--°C</p>
+            <p class="description" id="description">--</p>
+            
+            <div class="details">
+                <div class="detail-item">
+                    <span>💧 Humidity</span>
+                    <span id="humidity">--%</span>
+                </div>
+                <div class="detail-item">
+                    <span>🌬️ Wind</span>
+                    <span id="wind-speed">-- km/h</span>
+                </div>
+                <div class="detail-item">
+                    <span>📊 Pressure</span>
+                    <span id="pressure">-- hPa</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-message" class="error-message"></div>
+    </div>
+
+    <script>
+        // =====================================================
+        // SEARCH HISTORY MANAGER
+        // =====================================================
+        class SearchHistory {
+            constructor() {
+                this.storageKey = 'weatherSearchHistory';
+                this.maxHistory = 20;
+                this.history = this.loadHistory();
+                this.listeners = [];
+            }
+
+            loadHistory() {
+                try {
+                    const data = localStorage.getItem(this.storageKey);
+                    return data ? JSON.parse(data) : [];
+                } catch (error) {
+                    console.error('Error loading history:', error);
+                    return [];
+                }
+            }
+
+            saveHistory() {
+                try {
+                    localStorage.setItem(this.storageKey, JSON.stringify(this.history));
+                    this.notifyListeners();
+                } catch (error) {
+                    console.error('Error saving history:', error);
+                }
+            }
+
+            addSearch(city, timestamp = null) {
+                if (!city || city.trim() === '') return;
+                
+                const cityLower = city.trim().toLowerCase();
+                const now = timestamp || new Date().toISOString();
+                
+                // Remove duplicate if exists
+                this.history = this.history.filter(item => 
+                    item.city.toLowerCase() !== cityLower
+                );
+                
+                // Add to beginning
+                this.history.unshift({
+                    city: city.trim(),
+                    timestamp: now
+                });
+                
+                // Limit history size
+                if (this.history.length > this.maxHistory) {
+                    this.history = this.history.slice(0, this.maxHistory);
+                }
+                
+                this.saveHistory();
+            }
+
+            removeSearch(city) {
+                const cityLower = city.toLowerCase();
+                this.history = this.history.filter(item => 
+                    item.city.toLowerCase() !== cityLower
+                );
+                this.saveHistory();
+            }
+
+            clearHistory() {
+                this.history = [];
+                this.saveHistory();
+            }
+
+            getHistory() {
+                return this.history;
+            }
+
+            getCount() {
+                return this.history.length;
+            }
+
+            addListener(callback) {
+                this.listeners.push(callback);
+            }
+
+            notifyListeners() {
+                this.listeners.forEach(callback => callback(this.history));
+            }
+
+            formatTimestamp(timestamp) {
+                const date = new Date(timestamp);
+                const now = new Date();
+                const diff = now - date;
+                
+                if (diff < 60000) return 'Just now';
+                if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+                if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+                if (diff < 172800000) return 'Yesterday';
+                
+                return date.toLocaleDateString();
+            }
+
+            renderHistory(containerId) {
+                const container = document.getElementById(containerId);
+                const history = this.getHistory();
+                
+                if (history.length === 0) {
+                    container.innerHTML = '<div class="no-history">No searches yet</div>';
+                    return;
+                }
+
+                container.innerHTML = history.map((item, index) => `
+                    <div class="history-item" data-index="${index}">
+                        <span class="city-name" data-city="${item.city}">${item.city}</span>
+                        <span class="timestamp">${this.formatTimestamp(item.timestamp)}</span>
+                        <button class="remove-btn" data-city="${item.city}">✕</button>
+                    </div>
+                `).join('');
+
+                // Update count
+                const countEl = document.getElementById('history-count');
+                if (countEl) {
+                    countEl.textContent = `(${history.length})`;
+                }
+
+                // Add click listeners to city names
+                container.querySelectorAll('.city-name').forEach(el => {
+                    el.addEventListener('click', () => {
+                        const city = el.dataset.city;
+                        document.getElementById('city-input').value = city;
+                        document.getElementById('search-btn').click();
+                    });
+                });
+
+                // Add click listeners to remove buttons
+                container.querySelectorAll('.remove-btn').forEach(el => {
+                    el.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const city = el.dataset.city;
+                        this.removeSearch(city);
+                    });
+                });
+            }
+        }
+
+        // =====================================================
+        // WEATHER APP
+        // =====================================================
+        
+        // Initialize history
+        const searchHistory = new SearchHistory();
+
+        // DOM Elements
+        const searchBtn = document.getElementById('search-btn');
+        const cityInput = document.getElementById('city-input');
+        const weatherInfo = document.getElementById('weather-info');
+        const errorMessage = document.getElementById('error-message');
+        const loading = document.getElementById('loading');
+        const clearHistoryBtn = document.getElementById('clear-history-btn');
+        const refreshHistoryBtn = document.getElementById('refresh-history-btn');
+
+        const cityName = document.getElementById('city-name');
+        const temperature = document.getElementById('temperature');
+        const description = document.getElementById('description');
+        const humidity = document.getElementById('humidity');
+        const windSpeed = document.getElementById('wind-speed');
+        const pressure = document.getElementById('pressure');
+        const weatherIcon = document.getElementById('weather-icon');
+
+        // Show/hide functions
+        function showLoading() {
+            loading.classList.add('show');
+            weatherInfo.classList.remove('active');
+            errorMessage.classList.remove('show');
+        }
+
+        function hideLoading() {
+            loading.classList.remove('show');
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+            hideLoading();
+            weatherInfo.classList.remove('active');
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('show');
+        }
+
+        // Event listeners
+        searchBtn.addEventListener('click', () => {
+            const city = cityInput.value.trim();
+            if (city) {
+                getWeather(city);
+            } else {
+                showError('Please enter a city name');
+            }
+        });
+
+        cityInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchBtn.click();
+            }
+        });
+
+        clearHistoryBtn.addEventListener('click', () => {
+            if (confirm('Clear all search history?')) {
+                searchHistory.clearHistory();
+                searchHistory.renderHistory('history-list');
+            }
+        });
+
+        refreshHistoryBtn.addEventListener('click', () => {
+            searchHistory.renderHistory('history-list');
+        });
+
+        // Fetch weather data
+        async function getWeather(city) {
+            showLoading();
+            hideError();
+
+            try {
+                const url = `https://wttr.in/${encodeURIComponent(city)}?format=j1`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`City "${city}" not found. Please check the spelling.`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                displayWeather(data);
+                hideError();
+                
+                // Add to search history
+                const location = data.nearest_area[0];
+                const cityDisplay = `${location.areaName[0].value}, ${location.country[0].value}`;
+                searchHistory.addSearch(cityDisplay);
+                searchHistory.renderHistory('history-list');
+                
+            } catch (error) {
+                console.error('Weather fetch error:', error);
+                showError(error.message || 'Failed to fetch weather data. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Display weather data
+        function displayWeather(data) {
+            try {
+                const current = data.current_condition[0];
+                const location = data.nearest_area[0];
+                
+                const cityDisplay = `${location.areaName[0].value}, ${location.country[0].value}`;
+                cityName.textContent = cityDisplay;
+                temperature.textContent = `${current.temp_C}°C`;
+                description.textContent = current.weatherDesc[0].value;
+                humidity.textContent = `${current.humidity}%`;
+                windSpeed.textContent = `${Math.round(current.windSpeedKmph)} km/h`;
+                pressure.textContent = `${current.pressure} hPa`;
+                
+                // Weather icon mapping
+                const weatherCode = current.weatherCode;
+                const iconMap = {
+                    '113': '☀️', '116': '⛅', '119': '☁️', '122': '☁️',
+                    '143': '🌫️', '176': '🌦️', '179': '🌨️', '182': '🌧️',
+                    '185': '🌧️', '200': '⛈️', '227': '🌨️', '230': '❄️',
+                    '248': '🌫️', '260': '🌫️', '263': '🌦️', '266': '🌧️',
+                    '281': '🌧️', '284': '🌧️', '293': '🌦️', '296': '🌧️',
+                    '299': '🌧️', '302': '🌧️', '305': '🌧️', '308': '🌧️',
+                    '311': '🌧️', '314': '🌧️', '317': '🌧️', '320': '🌨️',
+                    '323': '❄️', '326': '❄️', '329': '❄️', '332': '❄️',
+                    '335': '❄️', '338': '❄️', '350': '🌧️', '353': '🌦️',
+                    '356': '🌧️', '359': '🌧️', '362': '🌧️', '365': '🌧️',
+                    '368': '🌨️', '371': '❄️', '377': '🌧️', '386': '⛈️',
+                    '389': '⛈️', '392': '⛈️', '395': '❄️'
+                };
+                
+                weatherIcon.textContent = iconMap[weatherCode] || '🌤️';
+                
+                weatherInfo.classList.add('active');
+                
+            } catch (error) {
+                console.error('Display error:', error);
+                showError('Error displaying weather data');
+            }
+        }
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', () => {
+            // Render history on load
+            searchHistory.renderHistory('history-list');
+            
+            // Auto-refresh history when it changes
+            searchHistory.addListener(() => {
+                searchHistory.renderHistory('history-list');
+            });
+            
+            // Try to get user's location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        try {
+                            const { latitude, longitude } = position.coords;
+                            showLoading();
+                            const url = `https://wttr.in/${latitude},${longitude}?format=j1`;
+                            const response = await fetch(url);
+                            const data = await response.json();
+                            displayWeather(data);
+                            hideError();
+                            hideLoading();
+                            
+                            // Add to history
+                            const location = data.nearest_area[0];
+                            const cityDisplay = `${location.areaName[0].value}, ${location.country[0].value}`;
+                            searchHistory.addSearch(cityDisplay);
+                            searchHistory.renderHistory('history-list');
+                            
+                        } catch (error) {
+                            console.error('Geolocation weather error:', error);
+                            getWeather('London');
+                        }
+                    },
+                    () => {
+                        getWeather('London');
+                    }
+                );
+            } else {
+                getWeather('London');
+            }
+        });
+    </script>
+</body>
+</html>
